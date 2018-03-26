@@ -1,0 +1,6 @@
+__pycache__/
+Analise/
+output/
+tests.py
+config.json
+log.txt

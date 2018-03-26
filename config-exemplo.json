@@ -1,0 +1,6 @@
+{
+       "ApplicationToken": "xxxxx",
+       "CompanyToken": "xxxx",
+       "Homologacao": true,
+       "PathBD": "IP/PORTA:PATH"
+}
