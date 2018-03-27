@@ -39,7 +39,7 @@ def executa_sql(sql, parameters=()):
 
 def inclui_cidade(nome_cidade, uf, cep):
     consulta = 'select first 1 id, nome from cidade where nome = ? and uf = ?'
-    cur = consulta_sql(consulta, [nome_cidade, uf])
+    cur = consulta_sql(consulta, [nome_cidade.upper(), uf.upper()])
     cidade_id = cur.fetchall()
     cur.close()
     if len(cidade_id) > 0:
@@ -54,11 +54,45 @@ def inclui_cidade(nome_cidade, uf, cep):
                    where empresa.registro_principal=1),
                   ?, ?, 1,
                  (select first 1 id from pais where pais.nome='BRASIL'),
-                 1, ?)"""
+                 1, ?) returning ID;"""
         out = executa_sql(insert, parameters=[nome_cidade.upper(),
                                               uf.upper(), cep[:5]])
-    print(out[0])
-    return out[0]
+        return out
+
+def inclui_endereco_parceiro_negocio(rua, nro, complemento, bairro, cep,
+                                     cidade_id, cliente_id):
+    insert = """INSERT INTO ENDERECO_PARCEIRO
+            (EMPRESA_ID, USUARIO_ID, TIPO,
+            LOGRADOURO, NUMERO, COMPLEMENTO, BAIRRO, CEP, CIDADE_ID,
+            PARCEIRO_NEGOCIO_ID, SITUACAO, ENDERECO_PRINCIPAL)
+            VALUES (
+                (select id from empresa
+                    where empresa.registro_principal=1),
+                (select usuario_id from empresa
+                    where empresa.registro_principal=1),
+                4, ?, ?, ?, ?, ?, ?, ?, 1, 1) returning ID"""
+
+    executa_sql(insert, parameters=[rua.upper(),
+                                    nro,
+                                    complemento.upper(),
+                                    bairro.upper(),
+                                    cep.upper(),
+                                    cidade_id,
+                                    cliente_id])
+
+
+def get_numero_rua(rua):
+    rua = rua.upper()
+    new_rua = rua.split(',')
+    if len(new_rua) <= 1:
+        new_rua = rua.split('Nº')
+    if len(new_rua) <= 1:
+        spl = len(rua)//2
+        new_rua = [rua[:spl], rua[spl:]]
+
+    numeros = [int(s) for s in new_rua[1].split() if s.isdigit()]
+    return 'S/N' if len(numeros) == 0 else numeros[0]
+
 
 def inclui_cliente(cliente):
     nome = cliente['razao_social']
@@ -96,32 +130,20 @@ def inclui_cliente(cliente):
                                                  fones, e_mails,
                                                  cpf, cnpj, ie, tipo_pessoa,
                                                  obs.upper()])
-    cidade_id =  inclui_cidade(cliente['cidade'],
-                               cliente['estado'],
-                               cliente['cep'])
 
-    if cidade_id > 0 and cliente_id >0:
-        insert = """INSERT INTO ENDERECO_PARCEIRO
-                (EMPRESA_ID, USUARIO_ID, TIPO,
-                LOGRADOURO, NUMERO, COMPLEMENTO, BAIRRO, CEP, CIDADE_ID,
-                PARCEIRO_NEGOCIO_ID, SITUACAO, ENDERECO_PRINCIPAL)
-                VALUES (
-                    (select id from empresa
-                        where empresa.registro_principal=1),
-                    (select usuario_id from empresa
-                        where empresa.registro_principal=1),
-                    4, ?, ?, ?, ?, ?, ?, ?, 1, 1)"""
+    cidade_id = inclui_cidade(nome_cidade = cliente['cidade'],
+                              uf = cliente['estado'],
+                              cep = cliente['cep'])
 
-        numeros = [int(s) for s in rua.split() if s.isdigit()]
-        numero = 'S/N' if len(numeros) == 0 else numeros[0]
-
-        executa_sql(insert, parameters=[cliente['rua'].upper(),
-                                        numero,
-                                        cliente['complemento'].upper(),
-                                        cliente['bairro'].upper(),
-                                        cliente['cep'].upper(),
-                                        cidade_id,
-                                        cliente_id])
+    if cidade_id > 0 and cliente_id[0] > 0:
+        numero = get_numero_rua(rua=cliente['rua'])
+        inclui_endereco_parceiro_negocio(rua=cliente['rua'],
+                                         nro=numero,
+                                         complemento=cliente['complemento'],
+                                         bairro=cliente['bairro'],
+                                         cep=cliente['cep'],
+                                         cidade_id=cidade_id,
+                                         cliente_id=cliente_id[0])
 
     return cliente_id[0]
 
@@ -199,10 +221,6 @@ def consulta_parceiro_negocio(cnpj_cpf, nome):
         else:
             return 0
 
-
-def inclui_parceiro_negocio(cliente):
-    script = ''
-    pass
 
 
 if __name__ == '__main__':
