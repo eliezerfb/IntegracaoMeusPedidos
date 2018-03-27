@@ -59,6 +59,7 @@ def inclui_cidade(nome_cidade, uf, cep):
                                               uf.upper(), cep[:5]])
         return out
 
+
 def inclui_endereco_parceiro_negocio(rua, nro, complemento, bairro, cep,
                                      cidade_id, cliente_id):
     insert = """INSERT INTO ENDERECO_PARCEIRO
@@ -126,14 +127,15 @@ def inclui_cliente(cliente):
                 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, current_date,
                 ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 returning ID;"""
-    cliente_id = executa_sql(insert, parameters=[nome.upper(), fantasia.upper(),
+    cliente_id = executa_sql(insert, parameters=[nome.upper(),
+                                                 fantasia.upper(),
                                                  fones, e_mails,
                                                  cpf, cnpj, ie, tipo_pessoa,
                                                  obs.upper()])
 
-    cidade_id = inclui_cidade(nome_cidade = cliente['cidade'],
-                              uf = cliente['estado'],
-                              cep = cliente['cep'])
+    cidade_id = inclui_cidade(nome_cidade=cliente['cidade'],
+                              uf=cliente['estado'],
+                              cep=cliente['cep'])
 
     if cidade_id > 0 and cliente_id[0] > 0:
         numero = get_numero_rua(rua=cliente['rua'])
@@ -198,6 +200,7 @@ def relaciona_cliente_meus_pedidos(parceiro_negocio_id,
     else:
         return relacao_existente[0][0]
 
+
 def consulta_parceiro_negocio_por_id(parceiro_negocio_id):
     consulta = """select parceiro_negocio.id, parceiro_negocio.nome,
                   parceiro_negocio.fantasia, parceiro_negocio.tipo_pessoa,
@@ -215,18 +218,19 @@ def consulta_parceiro_negocio_por_id(parceiro_negocio_id):
     cur = consulta_sql(consulta, [parceiro_negocio_id])
     pn = cur.fetchone()
     columns = [column[0] for column in cur.description]
-    if not pn == None:
+    if pn is not None:
         pn = dict(zip(columns, pn))
         fones = pn['FONES'].split(';')
         emails = pn['E_MAILS'].split(';')
+        tipo = 'J' if pn['TIPO_PESSOA'] == 1 else 'F'
+        fantasia = pn['FANTASIA'] if pn['TIPO_PESSOA'] == 1 else ''
+        cnpj = pn['CNPJ'] if pn['TIPO_PESSOA'] == 1 else pn['CPF']
+        ie = pn['INSCRICAO_ESTADUAL'] if pn['TIPO_PESSOA'] == 1 else ''
         parceiro_negocio = {'razao_social': pn['NOME'],
-                            'tipo' : 'J' if pn['TIPO_PESSOA'] == 1 else 'F',
-                            'nome_fantasia': pn['FANTASIA'] \
-                                    if pn['TIPO_PESSOA'] == 1 else '',
-                            'cnpj': pn['CNPJ'] \
-                                    if pn['TIPO_PESSOA'] == 1 else pn['CPF'],
-                            'inscricao_estadual': pn['INSCRICAO_ESTADUAL'] \
-                                    if pn['TIPO_PESSOA'] == 1 else '',
+                            'tipo': tipo,
+                            'nome_fantasia': fantasia,
+                            'cnpj': cnpj,
+                            'inscricao_estadual': ie,
                             'rua': pn['LOGRADOURO']+', '+pn['NUMERO'],
                             'complemento': pn['COMPLEMENTO'],
                             'cep': pn['CEP'],
@@ -235,11 +239,8 @@ def consulta_parceiro_negocio_por_id(parceiro_negocio_id):
                             'estado': pn['CIDADE_UF'],
                             'observacao': '',
                             'emails': emails,
-                            'telefones': fones,
-                           }
+                            'telefones': fones}
         return parceiro_negocio
-
-
 
 
 def consulta_parceiro_negocio(cnpj_cpf, nome):
@@ -262,18 +263,5 @@ def consulta_parceiro_negocio(cnpj_cpf, nome):
             return 0
 
 
-
 if __name__ == '__main__':
     pass
-    #print (consulta_parceiro_negocio('03532979926','RODRIGO LUIZ DE MORAES'))
-    # print (consulta_produto_pelo_id(1))
-    # print (consulta_ultima_alteracao_cliente())
-    # print(relaciona_cliente_meus_pedidos(1,2,3))
-    #relaciona_cliente_meus_pedidos(parceiro_negocio_id=3,
-    #                               codigo_cliente_mp=997,
-    #                               nome_mp='TESTE',
-    #                               data_hora_alteracao=datetime.now())
-
-    # print (consulta_parceiro_negocio_por_cnpj('09013254000119'))
-    # print(datetime.now().isoformat())
-    # inclui_cliente('')
