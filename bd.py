@@ -199,7 +199,47 @@ def relaciona_cliente_meus_pedidos(parceiro_negocio_id,
         return relacao_existente[0][0]
 
 def consulta_parceiro_negocio_por_id(parceiro_negocio_id):
-    pass
+    consulta = """select parceiro_negocio.id, parceiro_negocio.nome,
+                  parceiro_negocio.fantasia, parceiro_negocio.tipo_pessoa,
+                  parceiro_negocio.cnpj, parceiro_negocio.cpf,
+                  parceiro_negocio.inscricao_estadual, ep.logradouro,
+                  ep.numero, ep.complemento, ep.cep, ep.bairro,
+                  cidade.nome cidade_nome, cidade.uf cidade_uf,
+                  parceiro_negocio.e_mails, parceiro_negocio.fones
+                  from parceiro_negocio
+                  inner join endereco_parceiro ep on
+                      ep.parceiro_negocio_id = parceiro_negocio.id
+                      and ep.endereco_principal = 1
+                  inner join cidade on cidade.id = ep.cidade_id
+                  where parceiro_negocio.id = ? """
+    cur = consulta_sql(consulta, [parceiro_negocio_id])
+    pn = cur.fetchone()
+    columns = [column[0] for column in cur.description]
+    if not pn == None:
+        pn = dict(zip(columns, pn))
+        fones = pn['FONES'].split(';')
+        emails = pn['E_MAILS'].split(';')
+        parceiro_negocio = {'razao_social': pn['NOME'],
+                            'tipo' : 'J' if pn['TIPO_PESSOA'] == 1 else 'F',
+                            'nome_fantasia': pn['FANTASIA'] \
+                                    if pn['TIPO_PESSOA'] == 1 else '',
+                            'cnpj': pn['CNPJ'] \
+                                    if pn['TIPO_PESSOA'] == 1 else pn['CPF'],
+                            'inscricao_estadual': pn['INSCRICAO_ESTADUAL'] \
+                                    if pn['TIPO_PESSOA'] == 1 else '',
+                            'rua': pn['LOGRADOURO']+', '+pn['NUMERO'],
+                            'complemento': pn['COMPLEMENTO'],
+                            'cep': pn['CEP'],
+                            'bairro': pn['BAIRRO'],
+                            'cidade': pn['CIDADE_NOME'],
+                            'estado': pn['CIDADE_UF'],
+                            'observacao': '',
+                            'emails': emails,
+                            'telefones': fones,
+                           }
+        return parceiro_negocio
+
+
 
 
 def consulta_parceiro_negocio(cnpj_cpf, nome):
