@@ -201,6 +201,20 @@ def relaciona_cliente_meus_pedidos(parceiro_negocio_id,
         return relacao_existente[0][0]
 
 
+def cria_lista_de_string(str, caption):
+    if str is None:
+        return []
+    else:
+        lista = str.split(';')
+        # Converte a string para uma lista separando por ;
+        lista = [x.strip() for x in lista]
+        # Remove da lista todos os elementos em branco
+        lista = list(filter(lambda x: x != '', lista))
+        # Recria a lista {numero: numero}
+        lista = [{caption: x.strip()} for x in lista]
+        return lista
+
+
 def consulta_parceiro_negocio_por_id(parceiro_negocio_id):
     consulta = """select parceiro_negocio.id, parceiro_negocio.nome,
                   parceiro_negocio.fantasia, parceiro_negocio.tipo_pessoa,
@@ -220,26 +234,31 @@ def consulta_parceiro_negocio_por_id(parceiro_negocio_id):
     columns = [column[0] for column in cur.description]
     if pn is not None:
         pn = dict(zip(columns, pn))
-        fones = pn['FONES'].split(';')
-        emails = pn['E_MAILS'].split(';')
+        fones = cria_lista_de_string(pn['FONES'], 'numero')
+        emails = cria_lista_de_string(pn['E_MAILS'], 'email')
+
         tipo = 'J' if pn['TIPO_PESSOA'] == 1 else 'F'
         fantasia = pn['FANTASIA'] if pn['TIPO_PESSOA'] == 1 else ''
         cnpj = pn['CNPJ'] if pn['TIPO_PESSOA'] == 1 else pn['CPF']
         ie = pn['INSCRICAO_ESTADUAL'] if pn['TIPO_PESSOA'] == 1 else ''
+
         parceiro_negocio = {'razao_social': pn['NOME'],
-                            'tipo': tipo,
                             'nome_fantasia': fantasia,
+                            'tipo': tipo,
                             'cnpj': cnpj,
                             'inscricao_estadual': ie,
+                            'suframa': '',
                             'rua': pn['LOGRADOURO']+', '+pn['NUMERO'],
                             'complemento': pn['COMPLEMENTO'],
-                            'cep': pn['CEP'],
                             'bairro': pn['BAIRRO'],
+                            'cep': pn['CEP'],
                             'cidade': pn['CIDADE_NOME'],
                             'estado': pn['CIDADE_UF'],
                             'observacao': '',
                             'emails': emails,
-                            'telefones': fones}
+                            'telefones': fones,
+                            'contatos': [],
+                            'excluido': False}
         return parceiro_negocio
 
 
