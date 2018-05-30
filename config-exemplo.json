@@ -2,5 +2,8 @@
        "ApplicationToken": "xxxxx",
        "CompanyToken": "xxxx",
        "Homologacao": true,
-       "PathBD": "IP/PORTA:PATH"
+       "PathBD": "IP/PORTA:PATH",
+       "empresa_id" : 1,
+       "local_estoque_id" : 1,
+       "formula_calculo_id" : 4
 }

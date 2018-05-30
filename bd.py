@@ -173,6 +173,29 @@ def consulta_ultima_alteracao_cliente():
         return ''
 
 
+def consulta_ultima_alteracao_pedido():
+    # ?alterado_apos=2014-02-28%2012:32:55
+    consulta = 'select max(data_hora_alteracao) from pedidos_meus_pedidos'
+    cur = consulta_sql(consulta)
+    data_hora = cur.fetchall()
+    if not (data_hora[0][0] is None):
+        return '?alterado_apos={}%20{}'.format(data_hora[0][0].date(),
+                                               data_hora[0][0].time())
+    else:
+        return ''
+
+
+def consulta_id_cliente_erp(id_meus_pedidos):
+    cur = consulta_sql("""select parceiro_negocio_id from clientes_meus_pedidos
+                        where meus_pedidos_id = ?""",
+                        parameters=[id_meus_pedidos])
+    parceiro_negocio_id = cur.fetchall()
+    if len(parceiro_negocio_id) > 0:
+        return parceiro_negocio_id[0][0]
+    else:
+        return 0
+
+
 def relaciona_cliente_meus_pedidos(parceiro_negocio_id,
                                    codigo_cliente_mp,
                                    nome_mp, data_hora_alteracao):
@@ -280,6 +303,53 @@ def consulta_parceiro_negocio(cnpj_cpf, nome):
             return parceiro_negocio_id[0][0]
         else:
             return 0
+
+
+def insere_pedido(parceiro_negocio_id, data_emissao, dados_adicionais):
+    config = load_config()
+    empresa_id = config['empresa_id']
+    local_estoque_id = config['empresa_id']
+    formula_calculo_id = config['formula_calculo_id']
+
+    insert = '''INSERT INTO DOCUMENTO (SITUACAO, EMPRESA_ID, USUARIO_ID,
+                ENDERECO_PARCEIRO_ID, PARCEIRO_NEGOCIO_ID, TIPO,
+                NUMERO_DOCUMENTO, DATA_EMISSAO, HORA_SAIDA,
+                LOCAL_ESTOQUE_ID, FORMULA_CALCULO_ID,
+                /*REF_FATURA_DOCUMENTO_ID,*/
+                HORA_EMISSAO, EMITIDO_POR_ID, TIPO_IMPRESSAO_DANFE, OBS)
+                VALUES (1, ?,
+                (select first 1 id
+                    from usuario
+                    where usuario.master=1 and usuario.situacao=1),
+
+                (select first 1 id
+                    from endereco_parceiro
+                    where parceiro_negocio_id = ?/* PARCEIRO_NEGOCIO_ID */),
+
+                ?/* PARCEIRO_NEGOCIO_ID */,  3,
+                (select coalesce(max(numero_documento),0) + 1 numero_documento
+                    from documento where (tipo = 3)),
+
+                ?/*DATA_EMISSAO*/, '00:00:00',
+                ?/*LOCAL_ESTOQUE_ID*/, ? /*FORMULA_CALCULO_ID*/,
+                /*:REF_FATURA_DOCUMENTO_ID,*/
+                '00:00:00',
+
+                (select first 1 id from endereco_parceiro
+                    where parceiro_negocio_id = ? /* PARCEIRO_NEGOCIO_ID */),
+
+                1, ? /* OBS */) returning ID'''
+
+    out = executa_sql(insert,
+                      parameters=[empresa_id,
+                                  parceiro_negocio_id,
+                                  parceiro_negocio_id,
+                                  data_emissao,
+                                  local_estoque_id,
+                                  formula_calculo_id,
+                                  parceiro_negocio_id,
+                                  dados_adicionais.upper()])
+    return out[0]
 
 
 if __name__ == '__main__':
